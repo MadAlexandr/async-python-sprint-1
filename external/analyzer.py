@@ -42,7 +42,7 @@ INPUT_DAY_SUITABLE_CONDITIONS = [
 
 OUTPUT_RAW_DATA_KEY = "raw_data"
 OUTPUT_DAYS_KEY = "days"
-DEFAULT_OUTPUT_RESULT = {
+DEFAULT_OUTPUT_RESULT: dict = {
     OUTPUT_DAYS_KEY: [],
     # OUTPUT_RAW_DATA_KEY: None,
 }
@@ -97,7 +97,8 @@ class HourInfo:
     @staticmethod
     def is_hour_suitable(data):
         hour = int(data[INPUT_HOUR_PATH])
-        return (hour >= INPUT_DAY_HOURS_START) and (hour <= INPUT_DAY_HOURS_END)
+        return ((hour >= INPUT_DAY_HOURS_START)
+                and (hour <= INPUT_DAY_HOURS_END))
 
     @property
     def is_cond_suitable(self):
@@ -111,14 +112,21 @@ class HourInfo:
             return
 
         self.hour = int(self.raw_data[INPUT_HOUR_PATH])
-        self.temperature = int(deep_getitem(self.raw_data, INPUT_TEMPERATURE_PATH))
+        self.temperature = int(deep_getitem(
+            self.raw_data,
+            INPUT_TEMPERATURE_PATH
+        ))
         self.condition = deep_getitem(self.raw_data, INPUT_CONDITION_PATH)
 
 
 @dataclass
 class DayInfo:
     raw_data: Dict[str, tuple[str, int]] = field(repr=False)
-    hours: Optional[List[HourInfo]] = field(init=False, repr=False, default=None)
+    hours: Optional[List[HourInfo]] = field(
+        init=False,
+        repr=False,
+        default=None
+    )
 
     date: Optional[str] = field(init=False, default=None)
     hour_start: Optional[int] = field(init=False, default=None)
@@ -154,8 +162,8 @@ class DayInfo:
         conds_count = 0
 
         self.hours = self.raw_data[INPUT_HOURS_PATH]
-        # ToDo force sort by hour key in asc mode
-        for hour_data in self.hours:
+
+        for hour_data in sorted(self.hours, key=lambda x: int(x['hour'])):
             if not HourInfo.is_hour_suitable(hour_data):
                 continue
 
@@ -182,17 +190,15 @@ def analyze_json(data):
 
     # analyzing days
     time_start = None
-    time_end = None
 
     days_data = deep_getitem(data, INPUT_FORECAST_PATH)
     days = []
     # ToDo force sort by day in asc mode
-    for day_data in days_data:
+    for day_data in sorted(days_data, key=lambda x: x['date_ts']):
         d_info = DayInfo(raw_data=day_data)
         d_date = d_info.date
 
         time_start = time_start or d_date
-        time_end = d_date
 
         days.append(d_info.to_json())
 
@@ -203,15 +209,20 @@ def analyze_json(data):
 
 
 if __name__ == "__main__":
-    args = parse_args()
-    input_path = args.input
-    output_path = args.output
-    verbose_mode = args.verbose
+    def main():
+        args = parse_args()
+        input_path = args.input
+        output_path = args.output
+        verbose_mode = args.verbose
 
-    logging.basicConfig(level=logging.DEBUG if verbose_mode else logging.WARNING)
-    logging.info(args)
+        logging.basicConfig(
+            level=logging.DEBUG if verbose_mode else logging.WARNING
+        )
+        logging.info(args)
 
-    data = load_data(input_path)
-    data = analyze_json(data)
+        data = load_data(input_path)
+        data = analyze_json(data)
 
-    dump_data(data, output_path)
+        dump_data(data, output_path)
+
+    main()
